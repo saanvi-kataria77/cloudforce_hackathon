@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 # 1. The NEW, officially supported Google GenAI SDK
 from google import genai
 
-from schemas import AnalysisResponse, InterrogationRequest
-from services.youtube import get_video_id, get_transcript
+from backend.schemas import AnalysisResponse, InterrogationRequest
+from backend.services.youtube import get_video_id, get_transcript
 
 load_dotenv()
 api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
