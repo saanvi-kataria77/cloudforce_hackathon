@@ -1,17 +1,11 @@
-from pydantic import BaseModel, ValidationError, field_validator
-
-class LectureSummaries(BaseModel):
-    quick_notes: str
-    deep_dive: str
-    full_page_notes: str
-
-class FacultyAudit(BaseModel):
-    equity_report: str
-    accessibility_check: str
-    bias_analysis: str
+from pydantic import BaseModel
 
 class AnalysisResponse(BaseModel):
     video_id: str
-    summaries: LectureSummaries
-    audit: FacultyAudit
+    summaries: str  # expects raw, large string 
+    audit: str      # expect raw, large string 
+
+class InterrogationRequest(BaseModel):
+    video_id: str
+    question: str
 

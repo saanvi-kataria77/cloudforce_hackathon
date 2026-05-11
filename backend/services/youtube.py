@@ -7,30 +7,39 @@ def get_video_id(url: str):
 
 def get_transcript(video_id: str):
     try:
-        # 1. Fetch all available transcripts for the video
+        # fetching available transcripts for the video
         ytt_api = YouTubeTranscriptApi()
         transcript_list = ytt_api.list(video_id)
-
-        
         try:
-            # 2. Try to get the manual English one first
+            # getting one manually in english if available 
             transcript = transcript_list.find_transcript(['en', 'en-US'])
         except:
-            # 3. If that fails, grab the auto-generated English one!
+            # if fails, use the auto-generated one often in videos 
             generated_transcripts = [t for t in transcript_list if t.is_generated]
             if not generated_transcripts:
                 return "Error: No English or auto-generated transcripts found."
-            transcript = generated_transcripts[0] # Grab the first available auto-caption
+            transcript = generated_transcripts[0] # grab the first available caption 
             
-        # 4. Fetch the text and combine it
+        # fetch and combine 
         transcript_data = transcript.fetch()
         return " ".join([item.text for item in transcript_data])
         
     except Exception as e:
-        # THIS is how we debug! We print the exact error to your terminal.
-        print(f"\n--- DEBUG LOG ---")
-        print(f"Video ID: {video_id}")
-        print(f"Error Details: {str(e)}")
-        print(f"call list models: {ytt_api.list(video_id)}")
-        print(f"-----------------\n")
-        return f"Error: {str(e)}"
+        error_msg = str(e).lower()
+        
+        # edge case handling:
+
+        # if the video is private
+        if "video is unavailable" in error_msg or "private" in error_msg:
+            return "Error: This video is private or unavailable. Please use a public video."
+            
+        # if the video is a live stream
+        if "is a live stream" in error_msg or "livestream" in error_msg:
+            return "Error: Cannot analyze active livestreams. Please use a completed, uploaded video."
+            
+        # if subtitles are disabled
+        if "subtitles are disabled" in error_msg or "no transcript" in error_msg:
+            return "Error: The creator disabled subtitles for this video, so the agents cannot read it."
+            
+        # any other error
+        return f"Error: Could not extract transcript, ({str(e)})"
