@@ -1,5 +1,7 @@
 import re
-from youtube_transcript_api import YouTubeTranscriptApi
+import requests
+import xml.etree.ElementTree as ET
+import html
 
 def get_video_id(url: str):
     match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
@@ -7,37 +9,30 @@ def get_video_id(url: str):
 
 def get_transcript(video_id: str):
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, cookies="backend/cookies.txt")
-        try:
-            # getting one manually in english if available 
-            transcript = transcript_list.find_transcript(['en', 'en-US'])
-        except:
-            # if fails, use the auto-generated one often in videos 
-            generated_transcripts = [t for t in transcript_list if t.is_generated]
-            if not generated_transcripts:
-                return "Error: No English or auto-generated transcripts found."
-            transcript = generated_transcripts[0] # grab the first available caption 
+        # 1. The Silver Bullet: Use an unblocked public transcript proxy
+        response = requests.get(f"https://youtubetranscript.com/?server_vid2={video_id}")
+        
+        if response.status_code != 200:
+            return f"Error: Could not fetch transcript (Proxy API returned {response.status_code})"
             
-        # fetch and combine 
-        transcript_data = transcript.fetch()
-        return " ".join([item.text for item in transcript_data])
+        # 2. Parse the XML returned by the API
+        root = ET.fromstring(response.content)
         
-    except Exception as e:
-        error_msg = str(e).lower()
+        # 3. If the video is private or actually has no subtitles, it returns an <error> tag
+        if root.tag == 'error':
+            return "Error: The creator disabled subtitles for this video, or it is private/unavailable."
+            
+        # 4. Extract the text from all the XML <text> nodes
+        transcript_pieces = [child.text for child in root if child.text]
         
-        # edge case handling:
+        if not transcript_pieces:
+            return "Error: No transcripts found."
+            
+        # 5. Combine into one large string and clean up HTML characters (like &amp;)
+        full_transcript = " ".join(transcript_pieces)
+        full_transcript = html.unescape(full_transcript)
+        
+        return full_transcript
 
-        # if the video is private
-        if "video is unavailable" in error_msg or "private" in error_msg:
-            return "Error: This video is private or unavailable. Please use a public video."
-            
-        # if the video is a live stream
-        if "is a live stream" in error_msg or "livestream" in error_msg:
-            return "Error: Cannot analyze active livestreams. Please use a completed, uploaded video."
-            
-        # if subtitles are disabled
-        if "subtitles are disabled" in error_msg or "no transcript" in error_msg:
-            return "Error: The creator disabled subtitles for this video, so the agents cannot read it."
-            
-        # any other error
+    except Exception as e:
         return f"Error: Could not extract transcript, ({str(e)})"
