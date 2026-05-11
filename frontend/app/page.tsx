@@ -42,7 +42,7 @@ export default function Home() {
     setLoading(true); setError(""); setData(null); setAnswer(""); setQuestion("");
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/analyze?url=${encodeURIComponent(url)}`, { method: "POST" });
+      const response = await fetch(`https://cloudforce-hackathon-saanvi-kataria77.onrender.com/analyze?url=${encodeURIComponent(url)}`, { method: "POST" });
       if (!response.ok) {
         const errorData = await response.json(); 
         throw new Error(errorData.detail || "Failed to analyze video.");
@@ -60,7 +60,7 @@ export default function Home() {
     if (!question || !data?.video_id) return;
     setAsking(true); setAnswer("");
     try {
-      const response = await fetch(`http://127.0.0.1:8000/interrogate`, {
+      const response = await fetch(`https://cloudforce-hackathon-saanvi-kataria77.onrender.com/interrogate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ video_id: data.video_id, question: question })
