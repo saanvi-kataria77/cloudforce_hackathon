@@ -20,7 +20,7 @@ client = genai.Client(api_key=api_key)
 
 app = FastAPI()
 
-# having this middleware allows my React frontend (running on localhost:3000) to communicate with this FastAPI backend without CORS issues.
+# having this middleware allows my React frontend (for running on render) to communicate with this FastAPI backend without CORS issues.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -33,7 +33,7 @@ app.add_middleware(
 def home():
     return {"status": "Cloudforce Hackathon API is Live!", "docs": "Go to /docs to test"}
 
-analysis_cache = {}
+# analysis_cache = {}
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_video(url: str):
     video_id = get_video_id(url)
@@ -41,9 +41,10 @@ async def analyze_video(url: str):
         raise HTTPException(status_code=400, detail="Invalid YouTube URL")
         
     # caching for demo sake!!
-    if video_id in analysis_cache:
+    """if video_id in analysis_cache:
         print("Returning cached data!")
         return analysis_cache[video_id]
+    """
 
     transcript = get_transcript(video_id)
     if "Error:" in transcript:
@@ -90,12 +91,13 @@ async def analyze_video(url: str):
             "summaries": raw_summaries, 
             "audit": raw_audit
         }
-        analysis_cache[video_id] = result
+       #  analysis_cache[video_id] = result
         return result
 
     except Exception as e:
         print(f"Google API Error: {e}")
         
+        """
         # If API fails, but is my Stargate demo video, return this hardcoded data
         if video_id == "cNJwV3Ksxa8":
             return {
@@ -103,19 +105,21 @@ async def analyze_video(url: str):
                 "summaries": "**QUICK_NOTES:**\nProject Stargate was a top-secret CIA-backed military intelligence program (1970s-1995) that explored 'remote viewing'. Declassified documents reveal incredible hits where viewers accurately sketched military targets.\n\n**DEEP_DIVE:**\nIt was a covert military intelligence operation funded by the CIA. The U.S. government invested over $20 million into the program for over two decades...",
                 "audit": "**EQUITY:**\n* Acknowledgement of Diverse Knowledge Systems: Challenges a Western-centric view of knowledge validation.\n* Critique of Epistemic Injustice: The concept of gaslighting by government highlights an issue of epistemic injustice.\n\n**BIAS:**\n* Confirmation Bias: Exhibits a strong predisposition towards the reality and efficacy of paranormal phenomena."
             }
+        """
             
         # if random and API fails, then throw this general error 
         raise HTTPException(status_code=503, detail="Google's AI is currently experiencing high traffic. Please try again in a few moments!")
-
-@app.post("/interrogate")
-async def interrogate_video(req: InterrogationRequest):
-    try:
+    """
         # return the hardcoded answer 
         if req.video_id == "cNJwV3Ksxa8":
             # 1 second delay 
             import asyncio
             await asyncio.sleep(1) 
             return {"answer": "According to the transcript, the official 1995 review stated the program had 'no value' and called it a waste of $20 million. However, the archive founder suggests alternative narratives: it may have been cancelled for religious reasons (equating it with 'demonic practices') or because it was actually too successful and needed to be reclassified."}
+    """
+@app.post("/interrogate")
+async def interrogate_video(req: InterrogationRequest):
+    try:
         # retrieve the transcript 
         transcript = get_transcript(req.video_id)
         if "Error:" in transcript:

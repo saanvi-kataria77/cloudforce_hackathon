@@ -9,7 +9,7 @@ def get_transcript(video_id: str):
     try:
         # fetching available transcripts for the video
         ytt_api = YouTubeTranscriptApi()
-        transcript_list = ytt_api.list(video_id)
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, cookies="backend/cookies.txt")
         try:
             # getting one manually in english if available 
             transcript = transcript_list.find_transcript(['en', 'en-US'])
