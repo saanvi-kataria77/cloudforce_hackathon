@@ -1,7 +1,5 @@
 import re
 import requests
-import xml.etree.ElementTree as ET
-import html
 
 def get_video_id(url: str):
     match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
@@ -9,38 +7,50 @@ def get_video_id(url: str):
 
 def get_transcript(video_id: str):
     try:
-
-        # 1. telling the proxy we are a real human using Google Chrome
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        }
-        # 2. pass in disguise
-        response = requests.get(
-            f"https://youtubetranscript.com/?server_vid2={video_id}",
-            headers=headers
-        )
+        # 1. Ask the open-source Piped API (which naturally bypasses YouTube's bot protection) for the video data.
+        # We try two different public instances just in case one is busy.
+        api_url = f"https://pipedapi.kavin.rocks/streams/{video_id}"
+        response = requests.get(api_url)
         
         if response.status_code != 200:
-            return f"Error: Could not fetch transcript (Proxy API returned {response.status_code})"
+            api_url = f"https://pipedapi.lunar.icu/streams/{video_id}"
+            response = requests.get(api_url)
             
-        # 2. parse the XML returned by the API
-        root = ET.fromstring(response.content)
-        
-        # 3. if the video is private or actually has no subtitles, it returns an <error> tag
-        if root.tag == 'error':
-            return "Error: The creator disabled subtitles for this video, or it is private/unavailable."
+        if response.status_code != 200:
+            return "Error: Could not fetch video data from proxy."
             
-        # 4. extract the text from all the XML <text> nodes
-        transcript_pieces = [child.text for child in root if child.text]
+        data = response.json()
+        subtitles = data.get("subtitles", [])
         
-        if not transcript_pieces:
-            return "Error: No transcripts found."
+        if not subtitles:
+            return "Error: The creator disabled subtitles for this video, or it has no captions."
             
-        # 5. combine into one large string and clean up HTML characters (like &amp;)
-        full_transcript = " ".join(transcript_pieces)
-        full_transcript = html.unescape(full_transcript)
+        # 2. Grab the English subtitles (or fallback to the first available language)
+        target_sub = next((sub for sub in subtitles if 'English' in sub.get('name', '')), subtitles[0])
+            
+        # 3. Download the actual subtitle file (.vtt format)
+        vtt_response = requests.get(target_sub['url'])
+        if vtt_response.status_code != 200:
+            return "Error: Could not download the subtitle file."
+            
+        # 4. Clean up the VTT file into plain text for Gemini
+        lines = vtt_response.text.split('\n')
+        text_pieces = []
         
-        return full_transcript
+        for line in lines:
+            line = line.strip()
+            # Skip VTT metadata, timestamps, and empty lines
+            if not line or "-->" in line or line.startswith("WEBVTT") or line.startswith("Kind:") or line.startswith("Language:"):
+                continue
+            
+            # Remove formatting tags like <c.color>, <i>, <b>
+            clean_line = re.sub(r'<[^>]+>', '', line).strip()
+            
+            # Prevent duplicate lines (VTT files often repeat lines for overlapping captions)
+            if clean_line and (not text_pieces or text_pieces[-1] != clean_line):
+                text_pieces.append(clean_line)
+                
+        return " ".join(text_pieces)
 
     except Exception as e:
         return f"Error: Could not extract transcript, ({str(e)})"
