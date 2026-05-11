@@ -16,7 +16,7 @@ def get_transcript(video_id: str):
     
     # 3. They just need the full video URL and the format you want
     params = {
-        "video_url": f"https://www.youtube.com/watch?v={video_id}",
+        "video_url": video_id,
         "format": "json"
     }
 
