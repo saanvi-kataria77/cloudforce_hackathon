@@ -1,48 +1,62 @@
 import re
 import requests
-import urllib3
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.proxies import GenericProxyConfig
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# Forcefully tell Python's requests library to bypass SSL checks globally
-original_request = requests.Session.request
-def unverified_request(self, method, url, **kwargs):
-    kwargs['verify'] = False
-    return original_request(self, method, url, **kwargs)
-
-requests.Session.request = unverified_request
-# ----------------------------------
+import yt_dlp
 
 def get_video_id(url: str):
     match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
     return match.group(1) if match else None
 
 def get_transcript(video_id: str):
-    # 1. Paste your ScraperAPI key here!
-    SCRAPER_API_KEY = "PASTE_YOUR_API_KEY_HERE"
-    
-    proxy_url = f"http://scraperapi:{SCRAPER_API_KEY}@proxy-server.scraperapi.com:8001"
-    
-    proxy_config = GenericProxyConfig(
-        http_url=proxy_url,
-        https_url=proxy_url
-    )
+    url = f"https://www.youtube.com/watch?v={video_id}"
+
+    # We use yt-dlp's advanced client spoofing to completely bypass the bots.
+    ydl_opts = {
+        'quiet': True,
+        'skip_download': True,           # We don't want the video, just the text
+        'writesubtitles': True,
+        'writeautomaticsub': True,
+        'subtitleslangs': ['en'],
+        # The ultimate bypass: impersonate a real mobile device
+        'extractor_args': {'youtube': {'player_client': ['web', 'android']}}
+    }
 
     try:
-        ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
-        transcript_list = ytt_api.fetch(video_id)
-        
-        return " ".join([item['text'] for item in transcript_list])
-        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # Securely extract the video data without downloading it
+            info = ydl.extract_info(url, download=False)
+
+            subs = info.get('requested_subtitles')
+            if not subs or 'en' not in subs:
+                return "Error: No English subtitles found for this video."
+
+            # yt-dlp gives us the raw, authenticated URL to the subtitle file
+            sub_url = subs['en']['url']
+
+            # Download the text file directly
+            resp = requests.get(sub_url)
+            if resp.status_code != 200:
+                return "Error: Could not download the subtitle file."
+
+            # Clean the VTT data into plain text for Gemini
+            lines = resp.text.split('\n')
+            text_pieces = []
+            for line in lines:
+                line = line.strip()
+                # Skip VTT metadata and timestamps
+                if not line or "-->" in line or line.startswith("WEBVTT") or line.startswith("Kind:") or line.startswith("Language:"):
+                    continue
+                
+                # Remove formatting tags (like <b> or <i>)
+                clean_line = re.sub(r'<[^>]+>', '', line).strip()
+                
+                # Prevent duplicate lines
+                if clean_line and (not text_pieces or text_pieces[-1] != clean_line):
+                    text_pieces.append(clean_line)
+
+            return " ".join(text_pieces)
+
     except Exception as e:
         error_msg = str(e).lower()
-        if "video is unavailable" in error_msg or "private" in error_msg:
+        if "private" in error_msg:
             return "Error: This video is private or unavailable."
-        if "is a live stream" in error_msg or "livestream" in error_msg:
-            return "Error: Cannot analyze active livestreams."
-        if "disabled" in error_msg or "no transcript" in error_msg:
-            return "Error: The creator disabled subtitles for this video."
-            
-        return f"Error: Could not extract transcript, ({str(e)})"
+        return f"Error: Video processing failed ({str(e)})"
