@@ -1,0 +1,13 @@
+.env
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+
+# Node / React
+node_modules/
+.next/
+out/
+build/
+.DS_Store
