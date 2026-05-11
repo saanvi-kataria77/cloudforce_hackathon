@@ -6,36 +6,47 @@ def get_video_id(url: str):
     return match.group(1) if match else None
 
 def get_transcript(video_id: str):
-    # 1. The dedicated TranscriptAPI endpoint
     api_url = "https://transcriptapi.com/api/v2/youtube/transcript"
     
-    # 2. Paste your free API key here
+    # Using your active key to cross the finish line
     headers = {
         "Authorization": "Bearer sk_ON14Bl_iPjnJQpTjT8ACA_70MDRmpbHLfxK8PZc86TU"
     }
     
-    # 3. They just need the full video URL and the format you want
     params = {
-        "video_url": video_id,
+        "video_url": video_id, 
         "format": "json"
     }
 
     try:
-        response = requests.get(api_url, headers=headers, params=params)
+        response = requests.get(api_url, headers=headers, params=params, timeout=30)
         
         if response.status_code != 200:
-            return f"Error: API returned status {response.status_code}. The video might be private."
+            return f"Error: API returned status {response.status_code}. Raw: {response.text}"
 
         data = response.json()
-        segments = data.get("segments", [])
         
-        if not segments:
-            return "Error: No transcript found or subtitles are disabled."
+        # --- THE FIX: Look for the exact key your snippet showed! ---
+        if "transcript" in data and isinstance(data["transcript"], str):
+            clean_text = data["transcript"].strip()
+            if clean_text:
+                return clean_text
+
+        # Fallback just in case they sometimes use "text" or "segments"
+        if "segments" in data and data["segments"]:
+            return " ".join([seg.get("text", "") for seg in data["segments"]])
             
-        # 4. Combine the text segments into one massive string for Gemini
-        clean_text = " ".join([segment.get("text", "") for segment in segments])
+        if "text" in data and isinstance(data["text"], str):
+            return data["text"]
+
+        # --- THE SAFETY NET ---
+        # If it STILL fails, we force Python to print exactly what the API sent us
+        # so you can see it in your Render dashboard logs.
+        print(f"\n--- RAW API DATA FOR {video_id} ---")
+        print(data)
+        print("-----------------------------------\n")
         
-        return clean_text
+        return "Error: Connected successfully, but couldn't parse the text. Check Render logs!"
 
     except Exception as e:
         return f"Error: Could not extract transcript, ({str(e)})"
