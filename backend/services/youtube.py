@@ -25,10 +25,9 @@ def get_transcript(video_id: str):
 
         data = response.json()
         
-        # --- THE FINAL FIX ---
-        # Look for the 'transcript' key, and verify it's a LIST
+        # look for the 'transcript' key, and verify it's a LIST
         if "transcript" in data and isinstance(data["transcript"], list):
-            # Loop through every sentence dictionary, grab the 'text', and glue them together with a space!
+            # loop through every sentence dictionary, grab the 'text', and put them together in space
             clean_text = " ".join([item.get("text", "") for item in data["transcript"]])
             return clean_text
             

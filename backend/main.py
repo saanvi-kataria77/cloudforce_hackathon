@@ -14,7 +14,7 @@ load_dotenv()
 api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
 
 if not api_key:
-    raise ValueError("API Key not found! Check your .env file.")
+    raise ValueError("API Key not found! Check .env file.")
 
 client = genai.Client(api_key=api_key)
 
@@ -28,7 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global dictionary to store results so we don't hit Gemini rate limits twice for the same video
+# Global dictionary to store results so we don't hit Gemini rate limits twice for the same video, for sake of demo
 analysis_cache = {}
 
 @app.get("/")
@@ -41,18 +41,18 @@ async def analyze_video(url: str):
     if not video_id:
         raise HTTPException(status_code=400, detail="Invalid YouTube URL")
         
-    # 1. Check if we already processed this video in this session
+    # checking if already processed
     if video_id in analysis_cache:
         print(f"Returning cached data for {video_id}!")
         return analysis_cache[video_id]
 
-    # 2. Get the transcript using your new working TranscriptAPI service
+    # using transcript api service
     transcript = get_transcript(video_id)
     if "Error:" in transcript:
         raise HTTPException(status_code=500, detail=transcript)
 
     try: 
-        # Summaries prompt
+        # summaries prompt
         summary_prompt = f"""
         You are an academic tutor. Summarize this lecture transcript: {transcript}
         Provide the output clearly labeled as:
@@ -69,7 +69,7 @@ async def analyze_video(url: str):
 
         # Policy Audit prompt
         audit_prompt = f"""
-        You are a Policy Auditor. Analyze this educational transcript: {transcript}
+        You are a faculty member and are trying to audit this video. Analyze this educational transcript: {transcript}
         Look for sociotechnical implications, bias, accessibility gaps, 
         as well as different dimensions of equity and clarity.
         Provide the output clearly labeled as:
@@ -90,14 +90,14 @@ async def analyze_video(url: str):
             "audit": raw_audit
         }
         
-        # Save to memory cache
+        # save to memory cache
         analysis_cache[video_id] = result
         return result
 
     except Exception as e:
         print(f"Google API Error: {e}")
         
-        # --- BULLETPROOF FALLBACK FOR DEMO VIDEO ---
+        # for the demo video 
         if video_id == "cNJwV3Ksxa8":
             return {
                 "video_id": video_id,
@@ -112,7 +112,7 @@ async def interrogate_video(req: InterrogationRequest):
     try:
         transcript = get_transcript(req.video_id)
         if "Error:" in transcript:
-            raise HTTPException(status_code=500, detail="Could not read transcript for interrogation.")
+            raise HTTPException(status_code=500, detail="could not read transcript for interrogation.")
 
         interrogation_prompt = f"""
         You are an AI Fact-Checker and Citation Agent. The user is asking: "{req.question}"
