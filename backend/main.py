@@ -62,7 +62,7 @@ async def analyze_video(url: str):
         """
         
         summary_response = client.models.generate_content(
-            model='gemini-2.0-flash-lite',
+            model='gemini-1.5-flash',
             contents=summary_prompt
         )
         raw_summaries = summary_response.text
@@ -79,7 +79,7 @@ async def analyze_video(url: str):
         """
         
         audit_response = client.models.generate_content(
-            model='gemini-2.0-flash-lite',
+            model='gemini-1.5-flash',
             contents=audit_prompt
         )
         raw_audit = audit_response.text
@@ -124,7 +124,7 @@ async def interrogate_video(req: InterrogationRequest):
         """
         
         response = client.models.generate_content(
-            model='gemini-2.0-flash-lite',
+            model='gemini-1.5-flash',
             contents=interrogation_prompt
         )
         

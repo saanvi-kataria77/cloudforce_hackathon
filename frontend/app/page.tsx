@@ -84,7 +84,7 @@ export default function Home() {
       
       <div className="w-full max-w-2xl text-center space-y-6 mt-16 transition-all duration-500 ease-in-out">
         <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight">
-          Frontier Intern <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">AI</span>
+          YouTube Transcriptor <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">AI</span>
         </h1>
         <p className="text-lg text-slate-500 font-light">Paste a YouTube lecture URL to generate summaries, notes, and equity audits.</p>
         
@@ -150,7 +150,7 @@ export default function Home() {
               <CardHeader className="border-b border-slate-100 pb-4">
                 <CardTitle className="text-xl text-slate-800 font-bold flex items-center gap-2">
                   <span className="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full uppercase tracking-wider">Agent 2</span>
-                  STS Policy Audit
+                  Policy Audit for Faculty
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-4 max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
